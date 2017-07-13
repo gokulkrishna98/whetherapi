@@ -4,8 +4,10 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -13,7 +15,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.squareup.picasso.Picasso;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.Places;
+import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
+import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -27,11 +36,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class MainActivity extends AppCompatActivity {
-
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener{
+    GoogleApiClient mGoogleApiClient;
     TextView textView;
     TextView textview2;
-    EditText editText;
     ImageView imageview;
     Button searchmore;
     String iconid;
@@ -47,22 +55,48 @@ public class MainActivity extends AppCompatActivity {
 
         textView= (TextView) findViewById(R.id.textView);
         textview2=(TextView)findViewById(R.id.textView2);
-        editText=(EditText)findViewById(R.id.editText);
         imageview=(ImageView)findViewById(R.id.imageView);
         searchmore=(Button)findViewById(R.id.button2);
         imageview.setImageResource(R.drawable.download);
 
         searchmore.setVisibility(View.INVISIBLE);
+
+        mGoogleApiClient = new GoogleApiClient
+                .Builder(this)
+                .addApi(Places.GEO_DATA_API)
+                .addApi(Places.PLACE_DETECTION_API)
+                .enableAutoManage(this, this)
+                .build();
+
+        PlaceAutocompleteFragment autocompleteFragment = (PlaceAutocompleteFragment)
+                getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
+
+        autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(Place place) {
+                // TODO: Get info about the selected place.
+                Log.i("vivz", "Place: " + place.getName());
+                name=place.getName().toString();
+            }
+
+            @Override
+            public void onError(Status status) {
+                // TODO: Handle the error.
+                Log.i("vivz", "An error occurred: " + status);
+            }
+        });
+
+
     }
 
     public void search(View view)
-    {   name = editText.getText().toString();
+    {
         textview2.setText(name);
         dialog= new ProgressDialog(this);
         dialog.setMessage("Loading...");
         dialog.show();
 
-        new Jsonmethod().execute("http://api.openweathermap.org/data/2.5/weather?q="+editText.getText()+"&appid=6d72cb05b1a27c58fe17f07c216c0400");
+        new Jsonmethod().execute("http://api.openweathermap.org/data/2.5/weather?q="+name+"&appid=6d72cb05b1a27c58fe17f07c216c0400");
     }
 
     public void errorfn(final String stringxx)
@@ -74,6 +108,11 @@ public class MainActivity extends AppCompatActivity {
                 imageview.setVisibility(View.INVISIBLE);
             }
         });
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 
     public class Jsonmethod extends AsyncTask<String,String,String> {
@@ -124,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
                     int cityidno=parentobject.getInt("id");
                     cityid=""+cityidno;
 
-                    String finalresult="Weather condition-"+description+"\n"+"temperature-"+temp+"K\nhumidity-"+humidity+"%\npressure-"+pressure;
+                    String finalresult="Weather condition-"+description+"\n"+"Temperature-"+temp+"K\nHumidity-"+humidity+"%\nPressure-"+pressure+"hpa";
                     return finalresult;
 
 
@@ -155,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(s);
             dialog.hide();
             textView.setText(s);
-            textview2.setText(editText.getText().toString());
+            textview2.setText(name);
             imageview.setVisibility(View.VISIBLE);
             if(iconid.equals("01d")||iconid.equals("01n"))
             {imageview.setImageResource(R.drawable.x01d);}
